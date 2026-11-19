@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Localização</title>
+</head>
+<body>
+    <h3>A enviar localização...</h3>
+    <p id="status">A aguardar GPS...</p>
+
+    <script>
+        const statusEl = document.getElementById('status');
+
+        if (!("geolocation" in navigator)) {
+            statusEl.textContent = "Geolocalização não suportada neste navegador.";
+        } else {
+            navigator.geolocation.watchPosition(
+                async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    statusEl.textContent = `Lat: ${latitude.toFixed(6)} | Lng: ${longitude.toFixed(6)}`;
+
+                    try {
+                        await fetch('/atualizar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ latitude, longitude })
+                        });
+                    } catch (err) {
+                        statusEl.textContent = "Erro ao enviar para o servidor.";
+                    }
+                },
+                (err) => {
+                    statusEl.textContent = `Erro de GPS: ${err.message}`;
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Radar da Amiga</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #mapa { height: 100vh; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div id="mapa"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('mapa').setView([-23.550520, -46.633308], 16);
+
+        // Mapa de ruas da Esri (Gratuito, sem API Key e super estável)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri'
+        }).addTo(map);
+
+        let marcador = null;
+
+        function atualizarNoMapa(lat, lng) {
+            if (lat === 0 && lng === 0) return;
+
+            if (marcador) {
+                marcador.setLatLng([lat, lng]);
+            } else {
+                marcador = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Sua amiga está aqui! 📍")
+                    .openPopup();
+            }
+            map.setView([lat, lng]);
+        }
+
+        setInterval(async () => {
+            try {
+                const resposta = await fetch('/localizacao');
+                const dados = await resposta.json();
+                atualizarNoMapa(dados.latitude, dados.longitude);
+            } catch (e) {
+                console.log("Aguardando o servidor...");
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
