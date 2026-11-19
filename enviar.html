@@ -1,41 +1,131 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enviar Localização</title>
+    <title>Entrar no Radar</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .card {
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        h2 { margin-top: 0; font-size: 1.3rem; }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #fff;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 14px;
+            font-size: 0.92rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+        .ativo { color: #4ade80; font-weight: 600; }
+    </style>
 </head>
 <body>
-    <h3>A enviar localização...</h3>
-    <p id="status">A aguardar GPS...</p>
+    <div class="card">
+        <h2>📡 Compartilhar Localização</h2>
+        <label for="nomeInput">Como você quer aparecer no mapa?</label>
+        <input id="nomeInput" type="text" placeholder="Ex.: Ana, João, Fulano..." maxlength="30" />
+        <button id="btnIniciar">Começar a enviar</button>
+        <div class="status" id="status">Digite seu nome e toque no botão para ativar o GPS.</div>
+    </div>
 
     <script>
+        const nomeInput = document.getElementById('nomeInput');
+        const btnIniciar = document.getElementById('btnIniciar');
         const statusEl = document.getElementById('status');
 
-        if (!("geolocation" in navigator)) {
-            statusEl.textContent = "Geolocalização não suportada neste navegador.";
-        } else {
-            navigator.geolocation.watchPosition(
+        // Recupera nome salvo anteriormente, se houver
+        const nomeSalvo = localStorage.getItem('radar_nome');
+        if (nomeSalvo) nomeInput.value = nomeSalvo;
+
+        let watchId = null;
+
+        btnIniciar.addEventListener('click', () => {
+            const nome = nomeInput.value.trim();
+            if (!nome) {
+                statusEl.innerHTML = "⚠️ Escreva um nome antes de começar.";
+                return;
+            }
+
+            localStorage.setItem('radar_nome', nome);
+
+            if (!("geolocation" in navigator)) {
+                statusEl.textContent = "Geolocalização não suportada neste navegador.";
+                return;
+            }
+
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+
+            btnIniciar.disabled = true;
+            btnIniciar.textContent = "Enviando em tempo real...";
+            statusEl.innerHTML = `<span class="ativo">● Ativo como "${nome}"</span><br>Aguardando sinal do GPS...`;
+
+            watchId = navigator.geolocation.watchPosition(
                 async (pos) => {
                     const { latitude, longitude } = pos.coords;
-                    statusEl.textContent = `Lat: ${latitude.toFixed(6)} | Lng: ${longitude.toFixed(6)}`;
+                    statusEl.innerHTML = `<span class="ativo">● Enviando como "${nome}"</span><br>Lat: ${latitude.toFixed(6)} | Lng: ${longitude.toFixed(6)}`;
 
                     try {
                         await fetch('/atualizar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ latitude, longitude })
+                            body: JSON.stringify({ nome, latitude, longitude })
                         });
                     } catch (err) {
-                        statusEl.textContent = "Erro ao enviar para o servidor.";
+                        statusEl.innerHTML = `⚠️ Falha ao falar com o servidor. Tentando de novo...`;
                     }
                 },
                 (err) => {
+                    btnIniciar.disabled = false;
+                    btnIniciar.textContent = "Tentar novamente";
                     statusEl.textContent = `Erro de GPS: ${err.message}`;
                 },
-                { enableHighAccuracy: true }
+                { enableHighAccuracy: true, maximumAge: 2000 }
             );
-        }
+        });
     </script>
 </body>
 </html>

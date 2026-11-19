@@ -2,47 +2,167 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Radar da Amiga</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar da Galera</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; }
-        #mapa { height: 100vh; width: 100%; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #mapa {
+            height: 100vh;
+            width: 100%;
+        }
+        .painel {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            color: #f8fafc;
+            padding: 14px 16px;
+            border-radius: 14px;
+            min-width: 210px;
+            max-width: 260px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .painel h3 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .badge {
+            background: #2563eb;
+            font-size: 0.78rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+        .lista-pessoas {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .pessoa-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .pessoa-item:hover {
+            background: rgba(37, 99, 235, 0.35);
+        }
+        .pessoa-nome {
+            font-weight: 600;
+            display: block;
+        }
+        .pessoa-tempo {
+            font-size: 0.78rem;
+            color: #cbd5e1;
+        }
+        .vazio {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
+
+    <div class="painel">
+        <h3>
+            <span>📍 No Radar</span>
+            <span class="badge" id="contador">0</span>
+        </h3>
+        <ul class="lista-pessoas" id="listaPessoas">
+            <p class="vazio">Ninguém enviou localização ainda.</p>
+        </ul>
+    </div>
 
     <div id="mapa"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('mapa').setView([-23.550520, -46.633308], 16);
+        const map = L.map('mapa').setView([-23.550520, -46.633308], 15);
 
-        // Mapa de ruas da Esri (Gratuito, sem API Key e super estável)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
-        let marcador = null;
+        // Guarda marcadores por nome: { "Ana": L.marker(...) }
+        const marcadores = {};
+        let centralizouInicial = false;
 
-        function atualizarNoMapa(lat, lng) {
-            if (lat === 0 && lng === 0) return;
+        function formatarTempo(seg) {
+            if (seg < 5) return "agora mesmo";
+            if (seg < 60) return `há ${seg}s`;
+            const min = Math.floor(seg / 60);
+            return `há ${min}min`;
+        }
 
-            if (marcador) {
-                marcador.setLatLng([lat, lng]);
-            } else {
-                marcador = L.marker([lat, lng]).addTo(map)
-                    .bindPopup("Sua amiga está aqui! 📍")
-                    .openPopup();
+        function focarPessoa(lat, lng, nome) {
+            map.setView([lat, lng], 17);
+            if (marcadores[nome]) {
+                marcadores[nome].openPopup();
             }
-            map.setView([lat, lng]);
+        }
+
+        function renderizarUsuarios(usuarios, agora) {
+            const listaEl = document.getElementById('listaPessoas');
+            const contadorEl = document.getElementById('contador');
+            contadorEl.textContent = usuarios.length;
+
+            if (!usuarios.length) {
+                listaEl.innerHTML = '<p class="vazio">Ninguém enviou localização ainda.</p>';
+                return;
+            }
+
+            listaEl.innerHTML = '';
+
+            usuarios.forEach((u) => {
+                const { nome, latitude, longitude, atualizadoEm } = u;
+                const segundosAtras = Math.max(0, Math.floor((agora - atualizadoEm) / 1000));
+                const textoTempo = formatarTempo(segundosAtras);
+
+                if (marcadores[nome]) {
+                    marcadores[nome].setLatLng([latitude, longitude]);
+                    marcadores[nome].setPopupContent(`<b>${nome}</b><br>Atualizado ${textoTempo}`);
+                } else {
+                    marcadores[nome] = L.marker([latitude, longitude])
+                        .addTo(map)
+                        .bindPopup(`<b>${nome}</b><br>Atualizado ${textoTempo}`);
+
+                    if (!centralizouInicial) {
+                        map.setView([latitude, longitude], 16);
+                        centralizouInicial = true;
+                    }
+                }
+
+                const li = document.createElement('li');
+                li.className = 'pessoa-item';
+                li.innerHTML = `
+                    <span class="pessoa-nome">${nome}</span>
+                    <span class="pessoa-tempo">Atualizado ${textoTempo}</span>
+                `;
+                li.addEventListener('click', () => focarPessoa(latitude, longitude, nome));
+                listaEl.appendChild(li);
+            });
         }
 
         setInterval(async () => {
             try {
                 const resposta = await fetch('/localizacao');
                 const dados = await resposta.json();
-                atualizarNoMapa(dados.latitude, dados.longitude);
+                renderizarUsuarios(dados.usuarios || [], dados.agora || Date.now());
             } catch (e) {
                 console.log("Aguardando o servidor...");
             }

@@ -3,7 +3,6 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// A nuvem define a porta via variável de ambiente; em testes locais usa 3000
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -17,24 +16,36 @@ app.get('/enviar', (req, res) => {
   res.sendFile(path.join(__dirname, 'enviar.html'));
 });
 
-let ultimaLocalizacao = {
-  latitude: 0,
-  longitude: 0,
-  atualizadoEm: null
-};
+// Guarda várias pessoas: { "Ana": { nome, latitude, longitude, atualizadoEm }, ... }
+let localizacoes = {};
 
 app.post('/atualizar', (req, res) => {
-  const { latitude, longitude } = req.body;
-  ultimaLocalizacao = {
+  const { nome, latitude, longitude } = req.body;
+
+  if (!nome || typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return res.status(400).json({ erro: 'Nome, latitude e longitude são obrigatórios.' });
+  }
+
+  const nomeLimpo = String(nome).trim().slice(0, 30);
+  if (!nomeLimpo) {
+    return res.status(400).json({ erro: 'Nome inválido.' });
+  }
+
+  localizacoes[nomeLimpo] = {
+    nome: nomeLimpo,
     latitude,
     longitude,
-    atualizadoEm: new Date()
+    atualizadoEm: Date.now()
   };
-  res.status(200).json({ status: 'Sucesso' });
+
+  res.status(200).json({ status: 'Sucesso', nome: nomeLimpo });
 });
 
 app.get('/localizacao', (req, res) => {
-  res.json(ultimaLocalizacao);
+  res.json({
+    usuarios: Object.values(localizacoes),
+    agora: Date.now()
+  });
 });
 
 app.listen(PORT, () => {
