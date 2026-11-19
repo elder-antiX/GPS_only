@@ -1,2 +1,2 @@
 # GPS_only
-Um sistema de GPS
+Um sistema de GPS por ip
