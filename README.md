@@ -71,7 +71,7 @@ GPS_Dev/
 Com o projeto publicado (ex.: `https://gps-only.onrender.com`):
 
 1. **Quem vai compartilhar a localização** acessa `https://gps-only.onrender.com/enviar` pelo celular, informa seu nome e permite o acesso à localização.
-2. **Quem quer acompanhar no mapa** acessa `https://gps-only.onrender.com/` e acompanha os marcadores em tempo real.
+2. **Quem quer acompanhar no mapa** acessa `https://gps-only.onrender.com` e acompanha os marcadores em tempo real.
 
 ---
 
