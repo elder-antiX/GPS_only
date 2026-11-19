@@ -59,8 +59,8 @@ GPS_Dev/
    ```
 
 4. **Acesse no navegador:**
-   - **Mapa (Radar):** `http://localhost:3000/`
-   - **Enviar Localização:** `http://localhost:3000/enviar`
+   - **Mapa (Radar):** `https://gps-only.onrender.com`
+   - **Enviar Localização:** `https://gps-only.onrender.com/enviar`
 
 > **Nota:** Navegadores móveis exigem conexões seguras (`HTTPS`) para liberar o acesso ao GPS (`navigator.geolocation`). Em ambiente local (`localhost`), o navegador permite o acesso normalmente; para testar em celulares via internet, utilize a versão hospedada com HTTPS.
 
